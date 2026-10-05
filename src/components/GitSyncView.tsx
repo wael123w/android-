@@ -130,13 +130,17 @@ export const GitSyncView: React.FC<GitSyncViewProps> = ({
       const res = await GitService.pushSync(project, commitMessage);
       addTerminalLog(res.message);
 
-      const updatedConfig = {
-        ...config,
-        lastSyncCommit: res.commit.sha,
-        lastSyncAt: new Date().toLocaleTimeString()
-      };
-      setConfig(updatedConfig);
-      onUpdateGitConfig(updatedConfig, res.commit);
+      if (res.success && res.commit) {
+        const updatedConfig = {
+          ...config,
+          lastSyncCommit: res.commit.sha,
+          lastSyncAt: new Date().toLocaleTimeString()
+        };
+        setConfig(updatedConfig);
+        onUpdateGitConfig(updatedConfig, res.commit);
+      }
+    } catch (err: any) {
+      addTerminalLog(`Error: ${err.message || 'Push operation failed'}`);
     } finally {
       setIsPushing(false);
     }

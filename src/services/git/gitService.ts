@@ -145,19 +145,9 @@ export class GitService {
         message: `Pushed ${filesCount} files to origin/${config.branch || 'main'} (SHA: ${sha})`
       };
     } catch (err: any) {
-      // Local fallback
-      const sha = Math.random().toString(36).substring(2, 9);
       return {
-        success: true,
-        commit: {
-          sha,
-          message: commitMessage,
-          author: config.authorName || 'AppForge AI Architect',
-          date: new Date().toLocaleTimeString(),
-          filesCount,
-          url: `https://github.com/${config.repoOwner}/${config.repoName}/commit/${sha}`
-        },
-        message: `Synced ${filesCount} files to Git working branch.`
+        success: false,
+        message: err.message || 'Git push failed. Ensure remote repository exists and credentials are valid.'
       };
     }
   }

@@ -26,6 +26,8 @@ import { BackendGenerator } from './services/generators/backendGenerator';
 import { AdminGenerator } from './services/generators/adminGenerator';
 import { FlutterGenerator } from './services/generators/flutterGenerator';
 import { DocGenerator } from './services/generators/docGenerator';
+import { ProjectModificationEngine } from './services/generators/projectModificationEngine';
+import { AppBridge } from './services/bridge';
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
@@ -261,47 +263,19 @@ node_modules/
     setCurrentView('pipeline');
   };
 
-  // 2. Incremental AI Edit Project (Section 16)
+  // 2. Incremental AI Edit Project
   const handleModifyProject = async (modificationPrompt: string) => {
-    addLog('ai', 'AIEditor', `Analyzing modification request: "${modificationPrompt}"`);
+    addLog('ai', 'ProjectModificationEngine', `Analyzing modification request: "${modificationPrompt}"`);
 
-    const result = await AIService.editProject(activeProject.spec, modificationPrompt);
-    
-    // Regenerate modified files
-    const newFiles = { ...activeProject.files };
-    
-    // Update database.sql and add migration file
-    newFiles['database/database.sql'] = DatabaseGenerator.generateSql(result.updatedSpec);
-    if (result.newModules.length > 0) {
-      const migrationFile = `database/migrations/migration_v${result.updatedSpec.versionCode}.sql`;
-      newFiles[migrationFile] = DatabaseGenerator.generateMigration(result.updatedSpec, result.newModules);
-      addLog('build', 'DatabaseGenerator', `Created migration ${migrationFile} for modules: ${result.newModules.join(', ')}`);
+    try {
+      const result = await ProjectModificationEngine.modifyProject(activeProject, modificationPrompt);
+      setProjects(prev => prev.map(p => p.id === result.updatedProject.id ? result.updatedProject : p));
+      await AppBridge.saveProject(result.updatedProject);
+      addLog('success', 'ProjectModificationEngine', `Successfully applied: ${result.changesSummary}`);
+      addLog('build', 'DatabaseMigration', `Generated migration file: ${result.migrationPath}`);
+    } catch (err: any) {
+      addLog('error', 'ProjectModificationEngine', `Failed to modify project: ${err.message}`);
     }
-
-    // Refresh backend, admin, and flutter files
-    Object.assign(newFiles, BackendGenerator.generateBackendFiles(result.updatedSpec));
-    Object.assign(newFiles, AdminGenerator.generateAdminFiles(result.updatedSpec));
-    Object.assign(newFiles, FlutterGenerator.generateFlutterFiles(result.updatedSpec));
-    Object.assign(newFiles, DocGenerator.generateDocs(result.updatedSpec));
-
-    const newSnapshot = {
-      id: 'snap_' + Date.now().toString(36),
-      version: result.updatedSpec.version,
-      summary: result.summary,
-      createdAt: new Date().toISOString(),
-      filesCount: Object.keys(newFiles).length
-    };
-
-    const updatedProject: Project = {
-      ...activeProject,
-      spec: result.updatedSpec,
-      files: newFiles,
-      updatedAt: new Date().toISOString(),
-      snapshots: [newSnapshot, ...activeProject.snapshots]
-    };
-
-    setProjects(prev => prev.map(p => p.id === updatedProject.id ? updatedProject : p));
-    addLog('success', 'AIEditor', `Successfully applied modification: ${result.summary}`);
   };
 
   // 3. Export Project ZIP

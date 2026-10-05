@@ -388,26 +388,31 @@ app.post('/api/git/status', async (req, res) => {
 app.post('/api/git/push', async (req, res) => {
   try {
     const { projectId, repoOwner, repoName, branch = 'main', commitMessage, token, filesCount } = req.body;
-    let sha = '';
-    if (projectId) {
-      const commitRes = await GitRunner.commit(projectId, commitMessage || 'update');
-      if (commitRes.sha) sha = commitRes.sha;
-      const remoteUrl = `https://github.com/${repoOwner}/${repoName}.git`;
-      await GitRunner.push(projectId, remoteUrl, branch, token);
+    if (!projectId) {
+      return res.status(400).json({ success: false, message: 'projectId required' });
     }
-    if (!sha) {
-      sha = Math.random().toString(36).substring(2, 9);
-    }
-    const commitUrl = `https://github.com/${repoOwner}/${repoName}/commit/${sha}`;
 
+    const commitRes = await GitRunner.commit(projectId, commitMessage || 'update');
+    if (!commitRes.success || !commitRes.sha) {
+      return res.status(400).json({ success: false, message: commitRes.message || 'Git commit failed' });
+    }
+
+    const sha = commitRes.sha;
+    const remoteUrl = `https://github.com/${repoOwner}/${repoName}.git`;
+    const pushRes = await GitRunner.push(projectId, remoteUrl, branch, token);
+    if (!pushRes.success) {
+      return res.status(400).json({ success: false, sha, message: pushRes.message || 'Git push failed' });
+    }
+
+    const commitUrl = `https://github.com/${repoOwner}/${repoName}/commit/${sha}`;
     return res.json({
       success: true,
       sha,
       commitUrl,
       branch,
-      filesPushed: filesCount || 18,
+      filesPushed: filesCount || 0,
       timestamp: new Date().toLocaleTimeString(),
-      message: `Pushed commit ${sha} to origin/${branch}`
+      message: pushRes.message || `Pushed commit ${sha} to origin/${branch}`
     });
   } catch (err: any) {
     return res.status(500).json({ success: false, message: err.message });

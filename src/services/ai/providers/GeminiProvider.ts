@@ -89,9 +89,11 @@ Return your answer strictly in valid JSON format matching this schema:
         secondaryColor: options.secondaryColor,
         currency: options.currency,
       });
-    } catch {
-      // If network/rate limit fails, use robust deterministic engine
-      return SpecEngine.createSpecification(prompt, options);
+    } catch (err: any) {
+      if (options.allowTemplateFallback) {
+        return SpecEngine.createSpecification(prompt, options);
+      }
+      throw new Error(`[Google Gemini] AI specification generation failed: ${err.message || 'Network or quota error'}`);
     }
   }
 

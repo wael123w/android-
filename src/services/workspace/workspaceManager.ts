@@ -1,7 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import JSZip from 'jszip';
 import { Project, AppSpec } from '../../types';
+
+const BINARY_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico',
+  '.keystore', '.jks', '.apk', '.aab', '.zip', '.tar', '.gz'
+]);
 
 export class WorkspaceManager {
   private static workspaceDir: string = process.env.APPFORGE_PROJECTS_DIR || path.resolve(process.cwd(), 'AppForgeProjects');
@@ -71,22 +77,25 @@ export class WorkspaceManager {
       const entries = fs.readdirSync(currentDir, { withFileTypes: true });
 
       for (const entry of entries) {
-        // Skip build outputs and git internal folder from virtual file explorer
-        if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.dart_tool') continue;
+        // Skip build outputs, caches, node_modules, and git
+        if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.dart_tool' || entry.name === 'build') continue;
         if (entry.name === 'appforge.json' || entry.name === 'app-spec.json') continue;
 
         const fullPath = path.join(currentDir, entry.name);
         const rel = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+        const ext = path.extname(entry.name).toLowerCase();
 
         if (entry.isDirectory()) {
           scan(fullPath, rel);
         } else if (entry.isFile()) {
+          // Do not attempt to read binary files as text
+          if (BINARY_EXTENSIONS.has(ext)) continue;
+
           try {
-            // Read text files
             const content = fs.readFileSync(fullPath, 'utf-8');
             files[rel] = content;
           } catch {
-            // Binary files or skipped
+            // Unreadable or binary file
           }
         }
       }
@@ -183,5 +192,56 @@ export class WorkspaceManager {
 
     this.saveProjectToDisk(clonedProject);
     return clonedProject;
+  }
+
+  /**
+   * Generates a real ProjectName-v1.0.0.zip on disk excluding cache/build
+   */
+  public static async exportProjectZip(projectId: string): Promise<string> {
+    const projectDir = this.getProjectPath(projectId);
+    if (!fs.existsSync(projectDir)) {
+      throw new Error(`Project directory not found: ${projectDir}`);
+    }
+
+    const metaPath = path.join(projectDir, 'appforge.json');
+    let appName = projectId;
+    let version = '1.0.0';
+    if (fs.existsSync(metaPath)) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf-8'));
+        appName = (meta.name || projectId).replace(/[^a-zA-Z0-9_-]/g, '_');
+        version = meta.spec?.version || '1.0.0';
+      } catch {}
+    }
+
+    const zip = new JSZip();
+    const addDirectoryToZip = (currentDir: string, zipFolder: JSZip) => {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.dart_tool' || entry.name === 'build') {
+          continue;
+        }
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          const subFolder = zipFolder.folder(entry.name);
+          if (subFolder) addDirectoryToZip(fullPath, subFolder);
+        } else if (entry.isFile()) {
+          const data = fs.readFileSync(fullPath);
+          zipFolder.file(entry.name, data);
+        }
+      }
+    };
+
+    addDirectoryToZip(projectDir, zip);
+
+    const contentBuffer = await zip.generateAsync({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 },
+    });
+
+    const outputZipPath = path.join(this.getWorkspaceDir(), `${appName}-v${version}.zip`);
+    fs.writeFileSync(outputZipPath, contentBuffer);
+    return outputZipPath;
   }
 }

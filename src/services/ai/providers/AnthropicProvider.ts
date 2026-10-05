@@ -61,8 +61,11 @@ export class AnthropicProvider implements AIProvider {
         secondaryColor: options.secondaryColor,
         currency: options.currency,
       });
-    } catch {
-      return SpecEngine.createSpecification(prompt, options);
+    } catch (err: any) {
+      if (options.allowTemplateFallback) {
+        return SpecEngine.createSpecification(prompt, options);
+      }
+      throw new Error(`[Anthropic Claude] AI specification generation failed: ${err.message || 'API request failed'}`);
     }
   }
 

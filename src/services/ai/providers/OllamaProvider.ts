@@ -68,8 +68,11 @@ export class OllamaProvider implements AIProvider {
         secondaryColor: options.secondaryColor,
         currency: options.currency,
       });
-    } catch {
-      return SpecEngine.createSpecification(prompt, options);
+    } catch (err: any) {
+      if (options.allowTemplateFallback) {
+        return SpecEngine.createSpecification(prompt, options);
+      }
+      throw new Error(`[Ollama Local AI] AI specification generation failed: ${err.message || 'Make sure Ollama daemon is running on port 11434.'}`);
     }
   }
 

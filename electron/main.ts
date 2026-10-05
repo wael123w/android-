@@ -92,9 +92,9 @@ function setupIpcHandlers() {
   });
 
   ipcMain.handle('workspace:exportZip', async (_e, projectId) => {
-    const projectDir = WorkspaceManager.getProjectPath(projectId);
-    await shell.openPath(projectDir);
-    return true;
+    const zipPath = await WorkspaceManager.exportProjectZip(projectId);
+    await shell.showItemInFolder(zipPath);
+    return zipPath;
   });
 
   // 2. System Diagnostics Handlers
@@ -141,6 +141,8 @@ function setupIpcHandlers() {
       id: 'gemini',
       name: 'Gemini',
       model: 'gemini-3.8-flash',
+      temperature: 0.7,
+      maxTokens: 8192,
       isLocal: false,
       status: 'connected',
     });

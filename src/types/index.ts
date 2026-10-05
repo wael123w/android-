@@ -136,6 +136,14 @@ export interface AppSpec {
     contactUs: boolean;
     refundPolicy: boolean;
   };
+  apiBaseUrl?: string;
+  signing?: {
+    keystorePath?: string;
+    keyAlias?: string;
+    keystorePassword?: string;
+    keyPassword?: string;
+    isConfigured: boolean;
+  };
 }
 
 export interface ProjectSnapshot {
@@ -154,15 +162,19 @@ export interface BuildLog {
 
 export interface BuildRecord {
   id: string;
+  projectId?: string;
   target: 'apk-debug' | 'apk-release' | 'aab';
   status: 'idle' | 'building' | 'success' | 'failed';
   startedAt: string;
   completedAt?: string;
   durationSeconds?: number;
   outputFile?: string;
+  outputPath?: string;
+  fileSizeBytes?: number;
   fileSizeMb?: number;
   logs: BuildLog[];
   error?: string;
+  flutterVersion?: string;
   autoRepairAttempts: number;
   repairLogs: string[];
 }

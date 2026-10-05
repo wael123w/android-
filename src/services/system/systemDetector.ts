@@ -107,29 +107,53 @@ export class SystemDetector {
     });
 
     // 4. Java JDK
-    const javaPath = this.findBinaryPath('java') || (process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', process.platform === 'win32' ? 'java.exe' : 'java') : null);
+    const javaHome = process.env.JAVA_HOME;
+    const javaBinName = process.platform === 'win32' ? 'java.exe' : 'java';
+    const javaPath = this.findBinaryPath('java') || (javaHome ? path.join(javaHome, 'bin', javaBinName) : null);
     const javaVer = javaPath && fs.existsSync(javaPath) ? this.getBinaryVersion(javaPath, ['-version']) : null;
+    const javaInstalled = Boolean(javaPath && fs.existsSync(javaPath) && javaVer);
     results.push({
       name: 'Java Development Kit (JDK 17)',
       required: true,
-      installed: Boolean(javaPath && fs.existsSync(javaPath)),
-      version: javaVer || (javaPath ? 'Installed' : 'Missing (Requires OpenJDK 17)'),
-      path: javaPath && fs.existsSync(javaPath) ? javaPath : undefined,
+      installed: javaInstalled,
+      version: javaVer || (javaPath ? 'Installed (JDK detected)' : 'Missing (Requires OpenJDK 17)'),
+      path: javaPath && fs.existsSync(javaPath) ? javaPath : (javaHome || undefined),
       description: 'Required by Gradle for Android APK compilation',
       installUrl: 'https://adoptium.net'
     });
 
-    // 5. Android SDK & ADB
-    const adbPath = this.findBinaryPath('adb');
-    const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT;
-    const androidInstalled = Boolean(adbPath || (androidHome && fs.existsSync(androidHome)));
+    // 5. Android SDK & ADB (Validates platform-tools, platforms, build-tools, cmdline-tools)
+    const standardWinSdk = process.platform === 'win32' && process.env.LOCALAPPDATA 
+      ? path.join(process.env.LOCALAPPDATA, 'Android', 'Sdk')
+      : '';
+    const androidHome = process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || standardWinSdk;
+
+    const hasPlatformTools = Boolean(androidHome && fs.existsSync(path.join(androidHome, 'platform-tools')));
+    const hasPlatforms = Boolean(androidHome && fs.existsSync(path.join(androidHome, 'platforms')));
+    const hasBuildTools = Boolean(androidHome && fs.existsSync(path.join(androidHome, 'build-tools')));
+    
+    const adbBinName = process.platform === 'win32' ? 'adb.exe' : 'adb';
+    const adbPath = this.findBinaryPath('adb') || (androidHome && fs.existsSync(path.join(androidHome, 'platform-tools', adbBinName)) ? path.join(androidHome, 'platform-tools', adbBinName) : null);
+    const adbVer = adbPath && fs.existsSync(adbPath) ? this.getBinaryVersion(adbPath, ['version']) : null;
+
+    // Genuine verification: Must have adb and SDK directories
+    const androidFullyInstalled = Boolean(adbPath && hasPlatforms && hasBuildTools);
+    const androidPartiallyInstalled = Boolean(adbPath || (androidHome && fs.existsSync(androidHome)));
+    
+    let androidStatusText = 'Missing Android SDK';
+    if (androidFullyInstalled) {
+      androidStatusText = adbVer || 'Android SDK API 34 & Build-Tools Ready';
+    } else if (androidPartiallyInstalled) {
+      androidStatusText = 'Partial (Missing platforms or build-tools in SDK folder)';
+    }
+
     results.push({
       name: 'Android SDK (API 34)',
       required: true,
-      installed: androidInstalled,
-      version: adbPath ? (this.getBinaryVersion(adbPath, ['version']) || 'API 34 Ready') : (androidHome ? 'Configured in ANDROID_HOME' : 'Missing Android SDK'),
-      path: adbPath || androidHome || undefined,
-      description: 'Android platform tools, emulator, and compile target 34',
+      installed: androidFullyInstalled,
+      version: androidStatusText,
+      path: androidHome || (adbPath ? path.dirname(adbPath) : undefined),
+      description: 'Android platform-tools, platforms (API 34), build-tools, and emulator',
       installUrl: 'https://developer.android.com/studio'
     });
 

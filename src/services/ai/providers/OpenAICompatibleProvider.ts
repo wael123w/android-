@@ -14,11 +14,20 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   private getBaseUrl(): string {
-    let url = this.config.baseUrl || 'https://api.openai.com/v1';
-    return url.replace(/\/+$/, '');
+    if (this.config.baseUrl) {
+      return this.config.baseUrl.replace(/\/+$/, '');
+    }
+    if (this.config.id === 'openrouter') return 'https://openrouter.ai/api/v1';
+    if (this.config.id === 'codecraft') return 'https://api.codecraft.dev/v1';
+    if (this.config.id === 'lmstudio') return 'http://localhost:1234/v1';
+    return 'https://api.openai.com/v1';
   }
 
   public async generateText(prompt: string, systemInstruction?: string): Promise<string> {
+    if (!this.config.isLocal && !this.config.apiKey) {
+      throw new Error(`${this.name} API key is not configured. Please set your key in Settings > AI Providers.`);
+    }
+
     const url = `${this.getBaseUrl()}/chat/completions`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -73,8 +82,11 @@ export class OpenAICompatibleProvider implements AIProvider {
         secondaryColor: options.secondaryColor,
         currency: options.currency,
       });
-    } catch {
-      return SpecEngine.createSpecification(prompt, options);
+    } catch (err: any) {
+      if (options.allowTemplateFallback) {
+        return SpecEngine.createSpecification(prompt, options);
+      }
+      throw new Error(`[${this.name}] AI specification generation failed: ${err.message || 'API request failed'}`);
     }
   }
 

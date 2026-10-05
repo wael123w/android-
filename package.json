@@ -3,12 +3,18 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "dev:electron": "electron .",
+    "build": "vite build && npm run build:electron",
+    "build:renderer": "vite build",
+    "build:electron": "esbuild electron/main.ts --bundle --platform=node --outfile=dist-electron/main.js --external:electron && esbuild electron/preload.ts --bundle --platform=node --outfile=dist-electron/preload.js --external:electron",
+    "package:win": "electron-builder --win --x64",
     "preview": "vite preview",
     "start": "node server.ts",
-    "clean": "rm -rf dist server.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist dist-electron server.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

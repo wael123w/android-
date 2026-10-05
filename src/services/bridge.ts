@@ -1,43 +1,5 @@
-import { Project, BuildRecord, GitConfig, GitSyncCommit, SystemCheckTool } from '../types';
-
-declare global {
-  interface Window {
-    appforge?: {
-      isElectron: boolean;
-      platform: string;
-      workspace: {
-        listProjects: () => Promise<Project[]>;
-        getProject: (id: string) => Promise<Project | null>;
-        createProject: (projectData: Project) => Promise<string>;
-        saveProject: (projectData: Project) => Promise<string>;
-        deleteProject: (id: string) => Promise<boolean>;
-        cloneProject: (id: string, newName: string) => Promise<Project | null>;
-        openInExplorer: (projectPath: string) => Promise<boolean>;
-        getWorkspacePath: () => Promise<string>;
-        setWorkspacePath: (newPath: string) => Promise<boolean>;
-      };
-      system: {
-        detectSdks: () => Promise<SystemCheckTool[]>;
-        checkOllama: (baseUrl?: string) => Promise<{ online: boolean; models: any[] }>;
-      };
-      build: {
-        runBuild: (projectId: string, target: 'apk-debug' | 'apk-release' | 'aab') => Promise<BuildRecord>;
-        autoRepair: (projectId: string, errorLogs: string) => Promise<any>;
-        onBuildLog: (callback: (log: any) => void) => () => void;
-        onBuildProgress: (callback: (progress: any) => void) => () => void;
-      };
-      git: {
-        status: (projectId: string) => Promise<any>;
-        init: (projectId: string, branch?: string) => Promise<any>;
-        commit: (projectId: string, message: string, authorName?: string, authorEmail?: string) => Promise<any>;
-        push: (projectId: string, remoteUrl: string, branch?: string, token?: string) => Promise<any>;
-        getLog: (projectId: string, limit?: number) => Promise<GitSyncCommit[]>;
-        verifyRepo: (repoOwner: string, repoName: string, token?: string) => Promise<any>;
-        createRemoteRepo: (repoName: string, isPrivate: boolean, token: string, description?: string) => Promise<any>;
-      };
-    };
-  }
-}
+import { Project, BuildRecord, GitSyncCommit, SystemCheckTool } from '../types';
+import '../types/electron';
 
 export class AppBridge {
   public static isElectron(): boolean {
