@@ -1,0 +1,6 @@
+{
+  "name": "AppForge AI - AI Android App Factory",
+  "description": "Professional Windows desktop app & full-stack studio to generate complete production-ready Android apps (Flutter), PHP 8.2+ REST backend, MySQL database, and Admin panel using AI with build pipeline and auto-repair.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
