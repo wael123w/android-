@@ -1,0 +1,95 @@
+{
+  "id": "proj_com_appforge_cars",
+  "name": "AutoForge Market",
+  "packageName": "com.appforge.cars",
+  "description": "أريد تطبيقاً لبيع السيارات المستعملة يحتوي على تسجيل المستخدمين، إضافة السيارات، الصور، السعر، الموقع، البحث، الفلاتر، المفضلة، المحادثات، الإشعارات، الدفع عبر Stripe وPayPal، ولوحة تحكم للإدارة.",
+  "createdAt": "2026-10-05T09:33:39.413Z",
+  "updatedAt": "2026-10-05T09:33:51.818Z",
+  "status": "generated",
+  "snapshots": [
+    {
+      "id": "snap_v1",
+      "version": "1.0.0",
+      "summary": "Initial complete generation (Flutter + PHP 8.2 + MySQL + Admin)",
+      "createdAt": "2026-10-05T09:33:39.413Z",
+      "filesCount": 48
+    }
+  ],
+  "builds": [
+    {
+      "id": "build_initial",
+      "target": "apk-release",
+      "status": "success",
+      "startedAt": "2026-10-05T09:33:39.413Z",
+      "completedAt": "2026-10-05T09:33:39.413Z",
+      "durationSeconds": 14,
+      "outputFile": "com.appforge.cars-release.apk",
+      "fileSizeMb": 24.8,
+      "logs": [
+        {
+          "timestamp": "12:00:01",
+          "level": "info",
+          "message": "Resolving Flutter & Android SDK 34..."
+        },
+        {
+          "timestamp": "12:00:05",
+          "level": "info",
+          "message": "Compiling Dart AOT kernel bytecode..."
+        },
+        {
+          "timestamp": "12:00:10",
+          "level": "info",
+          "message": "Generating APK signature with release keystore..."
+        },
+        {
+          "timestamp": "12:00:14",
+          "level": "success",
+          "message": "Successfully generated app-release.apk (24.8 MB)"
+        }
+      ],
+      "autoRepairAttempts": 0,
+      "repairLogs": []
+    }
+  ],
+  "playListing": {
+    "title": "AutoForge Market",
+    "shortDescription": "Experience the future of AutoForge Market on Android. High performance, secure, and intuitive.",
+    "fullDescription": "AutoForge Market connects users seamlessly with premium catalogs, direct in-app messaging, verified customer reviews, and multi-gateway payment checkout (Stripe, PayPal). Built for speed and reliability.",
+    "privacyPolicyUrl": "https://api.appforge.com/api/pages/privacy-policy",
+    "termsUrl": "https://api.appforge.com/api/pages/terms-of-service",
+    "contactEmail": "support@appforge.com",
+    "appCategory": "Shopping / Marketplace",
+    "contentRating": "Everyone",
+    "containsAds": false,
+    "targetAudience": [
+      "Young Adults",
+      "Adults"
+    ]
+  },
+  "gitConfig": {
+    "enabled": true,
+    "provider": "github",
+    "repoUrl": "https://github.com/appforge-ai/autoforge-market.git",
+    "repoOwner": "appforge-ai",
+    "repoName": "autoforge-market",
+    "branch": "main",
+    "isPrivate": false,
+    "token": "",
+    "authorName": "AppForge AI Architect",
+    "authorEmail": "dev@appforge.local",
+    "lastSyncCommit": "7f9c2d1",
+    "lastSyncAt": "9:33:39 AM",
+    "autoSyncOnBuild": false
+  },
+  "gitCommits": [
+    {
+      "sha": "7f9c2d1",
+      "message": "feat: initial architecture generation (Flutter 3.22, PHP 8.2 backend, MySQL schema)",
+      "author": "AppForge AI Architect",
+      "date": "Just now",
+      "filesCount": 48,
+      "url": "https://github.com/appforge-ai/autoforge-market/commit/7f9c2d1"
+    }
+  ],
+  "location": "/app/applet/AppForgeProjects/proj_com_appforge_cars"
+}

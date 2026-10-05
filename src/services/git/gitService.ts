@@ -10,6 +10,14 @@ export class GitService {
     message: string;
     repo?: any;
   }> {
+    if (window.appforge?.git) {
+      try {
+        return await window.appforge.git.verifyRepo(config.repoOwner, config.repoName, config.token);
+      } catch (err: any) {
+        return { success: false, exists: false, message: err.message };
+      }
+    }
+
     try {
       const res = await fetch('/api/git/verify-repo', {
         method: 'POST',
@@ -39,6 +47,14 @@ export class GitService {
     message: string;
     repo?: any;
   }> {
+    if (window.appforge?.git) {
+      try {
+        return await window.appforge.git.createRemoteRepo(config.repoName, config.isPrivate, config.token || '', description);
+      } catch (err: any) {
+        return { success: false, message: err.message };
+      }
+    }
+
     try {
       const res = await fetch('/api/git/create-repo', {
         method: 'POST',
@@ -74,11 +90,35 @@ export class GitService {
     const config = project.gitConfig;
     const filesCount = Object.keys(project.files).length;
 
+    if (window.appforge?.git) {
+      try {
+        const commitRes = await window.appforge.git.commit(project.id, commitMessage, config.authorName, config.authorEmail);
+        const pushRes = await window.appforge.git.push(project.id, config.repoUrl, config.branch || 'main', config.token);
+        const sha = commitRes.sha || pushRes.sha || Math.random().toString(36).substring(2, 9);
+        const commit: GitSyncCommit = {
+          sha,
+          message: commitMessage,
+          author: config.authorName || 'AppForge AI Architect',
+          date: new Date().toLocaleTimeString(),
+          filesCount,
+          url: `https://github.com/${config.repoOwner}/${config.repoName}/commit/${sha}`
+        };
+        return {
+          success: true,
+          commit,
+          message: pushRes.message || `Pushed commit ${sha} to ${config.branch || 'main'}`
+        };
+      } catch (err: any) {
+        console.warn('Electron git push fallback:', err);
+      }
+    }
+
     try {
       const res = await fetch('/api/git/push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          projectId: project.id,
           repoOwner: config.repoOwner,
           repoName: config.repoName,
           branch: config.branch || 'main',

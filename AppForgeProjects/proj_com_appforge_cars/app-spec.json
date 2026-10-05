@@ -1,0 +1,937 @@
+{
+  "appName": "AutoForge Market",
+  "packageName": "com.appforge.cars",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "description": "أريد تطبيقاً لبيع السيارات المستعملة يحتوي على تسجيل المستخدمين، إضافة السيارات، الصور، السعر، الموقع، البحث، الفلاتر، المفضلة، المحادثات، الإشعارات، الدفع عبر Stripe وPayPal، ولوحة تحكم للإدارة.",
+  "category": "Automotive Marketplace",
+  "theme": {
+    "primaryColor": "#2563EB",
+    "secondaryColor": "#1D4ED8",
+    "accentColor": "#10B981",
+    "backgroundColor": "#F8FAFC",
+    "darkBackgroundColor": "#0F172A",
+    "fontFamily": "Roboto"
+  },
+  "backend": {
+    "type": "php",
+    "phpVersion": "8.2+",
+    "databaseType": "mysql",
+    "authType": "jwt",
+    "uploadStorage": "local_storage",
+    "cpanelCompatible": true
+  },
+  "payments": {
+    "enabled": true,
+    "gateways": [
+      "stripe",
+      "paypal",
+      "manual"
+    ],
+    "currency": "USD"
+  },
+  "modules": {
+    "auth": true,
+    "catalog": true,
+    "cars": true,
+    "favorites": true,
+    "messaging": true,
+    "payments": true,
+    "reviews": true,
+    "notifications": true,
+    "coupons": false,
+    "adminPanel": true,
+    "pages": true
+  },
+  "tables": [
+    {
+      "name": "roles",
+      "description": "User access levels and authorization roles",
+      "module": "core",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "50",
+          "nullable": false
+        },
+        {
+          "name": "display_name",
+          "type": "VARCHAR",
+          "length": "100",
+          "nullable": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    {
+      "name": "users",
+      "description": "User accounts, hashed credentials, and profiles",
+      "module": "auth",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "role_id",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "3",
+          "foreignKey": {
+            "table": "roles",
+            "column": "id",
+            "onDelete": "RESTRICT"
+          }
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "150",
+          "nullable": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR",
+          "length": "191",
+          "nullable": false
+        },
+        {
+          "name": "password",
+          "type": "VARCHAR",
+          "length": "255",
+          "nullable": false
+        },
+        {
+          "name": "phone",
+          "type": "VARCHAR",
+          "length": "50",
+          "nullable": true
+        },
+        {
+          "name": "avatar",
+          "type": "VARCHAR",
+          "length": "255",
+          "nullable": true
+        },
+        {
+          "name": "status",
+          "type": "ENUM",
+          "length": "'active','pending','banned'",
+          "nullable": false,
+          "defaultValue": "active"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ],
+      "indexes": [
+        "email",
+        "role_id"
+      ]
+    },
+    {
+      "name": "categories",
+      "description": "Hierarchical catalog categories",
+      "module": "catalog",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR",
+          "length": "100",
+          "nullable": false
+        },
+        {
+          "name": "slug",
+          "type": "VARCHAR",
+          "length": "120",
+          "nullable": false
+        },
+        {
+          "name": "icon",
+          "type": "VARCHAR",
+          "length": "50",
+          "nullable": true
+        },
+        {
+          "name": "image",
+          "type": "VARCHAR",
+          "length": "255",
+          "nullable": true
+        },
+        {
+          "name": "sort_order",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "is_active",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "defaultValue": "1"
+        }
+      ]
+    },
+    {
+      "name": "cars",
+      "description": "Primary cars catalog records",
+      "module": "cars",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "category_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "categories",
+            "column": "id",
+            "onDelete": "RESTRICT"
+          }
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "length": "200",
+          "nullable": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "price",
+          "type": "DECIMAL",
+          "length": "12,2",
+          "nullable": false,
+          "defaultValue": "0.00"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR",
+          "length": "10",
+          "nullable": false,
+          "defaultValue": "USD"
+        },
+        {
+          "name": "status",
+          "type": "ENUM",
+          "length": "'pending','approved','active','sold','inactive'",
+          "nullable": false,
+          "defaultValue": "pending"
+        },
+        {
+          "name": "views_count",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        },
+        {
+          "name": "brand",
+          "type": "VARCHAR",
+          "length": "80",
+          "nullable": false,
+          "defaultValue": "General"
+        },
+        {
+          "name": "model",
+          "type": "VARCHAR",
+          "length": "80",
+          "nullable": false,
+          "defaultValue": "Standard"
+        },
+        {
+          "name": "year",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "2023"
+        },
+        {
+          "name": "mileage",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "transmission",
+          "type": "VARCHAR",
+          "length": "30",
+          "nullable": true,
+          "defaultValue": "Automatic"
+        },
+        {
+          "name": "fuel_type",
+          "type": "VARCHAR",
+          "length": "30",
+          "nullable": true,
+          "defaultValue": "Petrol"
+        },
+        {
+          "name": "location",
+          "type": "VARCHAR",
+          "length": "150",
+          "nullable": true,
+          "defaultValue": "Downtown"
+        }
+      ],
+      "indexes": [
+        "user_id",
+        "category_id",
+        "status"
+      ]
+    },
+    {
+      "name": "car_images",
+      "description": "High resolution gallery photos for cars",
+      "module": "cars",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "car_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "cars",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "image_url",
+          "type": "VARCHAR",
+          "length": "255",
+          "nullable": false
+        },
+        {
+          "name": "is_featured",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "sort_order",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "0"
+        }
+      ]
+    },
+    {
+      "name": "favorites",
+      "description": "User bookmarks and saved wishlists",
+      "module": "favorites",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "car_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "cars",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    {
+      "name": "messages",
+      "description": "In-app real-time messaging between users and buyers/sellers",
+      "module": "messaging",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "sender_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "receiver_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "car_id",
+          "type": "INT",
+          "nullable": true,
+          "foreignKey": {
+            "table": "cars",
+            "column": "id",
+            "onDelete": "SET NULL"
+          }
+        },
+        {
+          "name": "message_text",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "is_read",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "description": "Payment transactions, receipts, and settlement records",
+      "module": "payments",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "RESTRICT"
+          }
+        },
+        {
+          "name": "transaction_id",
+          "type": "VARCHAR",
+          "length": "100",
+          "nullable": false
+        },
+        {
+          "name": "gateway",
+          "type": "VARCHAR",
+          "length": "50",
+          "nullable": false
+        },
+        {
+          "name": "amount",
+          "type": "DECIMAL",
+          "length": "12,2",
+          "nullable": false
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR",
+          "length": "10",
+          "nullable": false,
+          "defaultValue": "USD"
+        },
+        {
+          "name": "status",
+          "type": "ENUM",
+          "length": "'pending','completed','failed','refunded'",
+          "nullable": false,
+          "defaultValue": "pending"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    {
+      "name": "reviews",
+      "description": "Verified ratings and customer feedback",
+      "module": "reviews",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "car_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "cars",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "rating",
+          "type": "INT",
+          "nullable": false,
+          "defaultValue": "5"
+        },
+        {
+          "name": "comment",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    {
+      "name": "notifications",
+      "description": "System and activity push alert logs",
+      "module": "notifications",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "user_id",
+          "type": "INT",
+          "nullable": false,
+          "foreignKey": {
+            "table": "users",
+            "column": "id",
+            "onDelete": "CASCADE"
+          }
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "length": "150",
+          "nullable": false
+        },
+        {
+          "name": "body",
+          "type": "TEXT",
+          "nullable": false
+        },
+        {
+          "name": "is_read",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "defaultValue": "0"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "description": "Application branding, contact info, and payment parameters",
+      "module": "system",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "setting_key",
+          "type": "VARCHAR",
+          "length": "80",
+          "nullable": false
+        },
+        {
+          "name": "setting_value",
+          "type": "TEXT",
+          "nullable": true
+        },
+        {
+          "name": "group_name",
+          "type": "VARCHAR",
+          "length": "50",
+          "nullable": false,
+          "defaultValue": "general"
+        }
+      ]
+    },
+    {
+      "name": "pages",
+      "description": "Legal policies and content management pages",
+      "module": "content",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT",
+          "nullable": false,
+          "primaryKey": true,
+          "autoIncrement": true
+        },
+        {
+          "name": "slug",
+          "type": "VARCHAR",
+          "length": "100",
+          "nullable": false
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR",
+          "length": "150",
+          "nullable": false
+        },
+        {
+          "name": "content",
+          "type": "LONGTEXT",
+          "nullable": true
+        },
+        {
+          "name": "is_published",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "defaultValue": "1"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "defaultValue": "CURRENT_TIMESTAMP"
+        }
+      ]
+    }
+  ],
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "description": "User registration with bcrypt password encryption",
+      "module": "auth",
+      "authRequired": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "description": "Authenticate user and issue JWT bearer token",
+      "module": "auth",
+      "authRequired": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "description": "Retrieve authenticated user session profile",
+      "module": "auth",
+      "authRequired": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/cars",
+      "description": "Paginated search and filter for cars",
+      "module": "cars",
+      "authRequired": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/cars/:id",
+      "description": "Get single record details for car",
+      "module": "cars",
+      "authRequired": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/cars",
+      "description": "Submit new car with admin review workflow",
+      "module": "cars",
+      "authRequired": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/cars/:id",
+      "description": "Update owned car parameters",
+      "module": "cars",
+      "authRequired": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/cars/:id",
+      "description": "Remove car listing",
+      "module": "cars",
+      "authRequired": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload",
+      "description": "Secure multi-format image upload handler",
+      "module": "upload",
+      "authRequired": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/payments",
+      "description": "Process checkout transaction via Stripe or PayPal",
+      "module": "payments",
+      "authRequired": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/:slug",
+      "description": "Read legal pages (privacy, terms, refund)",
+      "module": "content",
+      "authRequired": false
+    }
+  ],
+  "adminPages": [
+    {
+      "slug": "users",
+      "title": "User Management",
+      "module": "auth",
+      "icon": "users",
+      "table": "users",
+      "supportsCreate": true,
+      "supportsEdit": true,
+      "supportsDelete": true,
+      "supportsExport": true,
+      "searchColumns": [
+        "name",
+        "email"
+      ]
+    },
+    {
+      "slug": "cars",
+      "title": "Cars Catalog",
+      "module": "cars",
+      "icon": "car",
+      "table": "cars",
+      "supportsCreate": true,
+      "supportsEdit": true,
+      "supportsDelete": true,
+      "supportsExport": true,
+      "supportsApproval": true,
+      "searchColumns": [
+        "title"
+      ]
+    },
+    {
+      "slug": "categories",
+      "title": "Categories",
+      "module": "catalog",
+      "icon": "tags",
+      "table": "categories",
+      "supportsCreate": true,
+      "supportsEdit": true,
+      "supportsDelete": true,
+      "supportsExport": false,
+      "searchColumns": [
+        "name"
+      ]
+    },
+    {
+      "slug": "payments",
+      "title": "Payments & Revenue",
+      "module": "payments",
+      "icon": "credit-card",
+      "table": "payments",
+      "supportsCreate": false,
+      "supportsEdit": false,
+      "supportsDelete": false,
+      "supportsExport": true,
+      "searchColumns": [
+        "transaction_id"
+      ]
+    }
+  ],
+  "androidScreens": [
+    {
+      "id": "home",
+      "title": "Home Discovery",
+      "module": "core",
+      "route": "/home",
+      "type": "dashboard",
+      "description": "Main browsing hub with hero banner and featured cards",
+      "widgets": [
+        "SearchBar",
+        "BannerCarousel",
+        "CategoryChips",
+        "FeaturedGrid"
+      ]
+    },
+    {
+      "id": "details",
+      "title": "CAR Details",
+      "module": "cars",
+      "route": "/details",
+      "type": "detail",
+      "description": "Detailed view with photo gallery, specs, and order button",
+      "widgets": [
+        "ImageSlider",
+        "TitleAndPrice",
+        "SpecTable",
+        "ContactSellerCTA"
+      ]
+    },
+    {
+      "id": "search",
+      "title": "Search & Filters",
+      "module": "catalog",
+      "route": "/search",
+      "type": "list",
+      "description": "Multi-criteria filter with price range and sort order",
+      "widgets": [
+        "FilterSheet",
+        "SearchResults"
+      ]
+    },
+    {
+      "id": "auth_login",
+      "title": "Sign In",
+      "module": "auth",
+      "route": "/login",
+      "type": "auth",
+      "description": "Email and password authentication",
+      "widgets": [
+        "EmailField",
+        "PasswordField",
+        "SubmitButton"
+      ]
+    },
+    {
+      "id": "checkout",
+      "title": "Checkout & Pay",
+      "module": "payments",
+      "route": "/checkout",
+      "type": "form",
+      "description": "Select Stripe or PayPal gateway",
+      "widgets": [
+        "OrderSummary",
+        "PaymentMethodSelector",
+        "PayButton"
+      ]
+    },
+    {
+      "id": "profile",
+      "title": "User Account",
+      "module": "profile",
+      "route": "/profile",
+      "type": "profile",
+      "description": "Profile information and orders history",
+      "widgets": [
+        "AvatarHeader",
+        "ListTiles",
+        "LogoutButton"
+      ]
+    }
+  ],
+  "cmsPages": {
+    "privacyPolicy": true,
+    "termsAndConditions": true,
+    "aboutUs": true,
+    "contactUs": true,
+    "refundPolicy": true
+  }
+}

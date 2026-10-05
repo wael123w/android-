@@ -1,0 +1,14 @@
+# AppForge AI Git Ignore
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.apk
+*.aab
+*.keystore
+uploads/*
+!uploads/.gitkeep
+.env
+node_modules/
+*.log

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   GitBranch, 
   GitCommit, 
@@ -47,6 +47,16 @@ export const GitSyncView: React.FC<GitSyncViewProps> = ({
     `[Git Remote] origin -> ${project.gitConfig.repoUrl}`,
     `[Git Head] Branch: ${project.gitConfig.branch || 'main'}`
   ]);
+
+  useEffect(() => {
+    setConfig(project.gitConfig);
+    setTerminalLogs([
+      `[Git Core] Initialized working tree for ${project.name}`,
+      `[Git Remote] origin -> ${project.gitConfig.repoUrl}`,
+      `[Git Head] Branch: ${project.gitConfig.branch || 'main'}`
+    ]);
+    setVerifyStatus(null);
+  }, [project.id]);
 
   const addTerminalLog = (msg: string) => {
     setTerminalLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);

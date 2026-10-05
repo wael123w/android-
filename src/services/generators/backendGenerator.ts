@@ -15,24 +15,51 @@ export class BackendGenerator {
   RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
 <IfModule mod_headers.c>
-  Header set Access-Control-Allow-Origin "*"
   Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
   Header set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With"
 </IfModule>`;
 
-    // 2. Database Config
+    // .env.example
+    files['backend/.env.example'] = `# AppForge AI PHP Backend Configuration
+DB_HOST=127.0.0.1
+DB_NAME=${spec.packageName.replace(/[^a-zA-Z0-9]/g, '_')}_db
+DB_USER=cpanel_user
+DB_PASS=secure_password
+JWT_SECRET=${Buffer.from(spec.packageName + '_' + Date.now()).toString('hex')}
+CORS_ALLOWED_ORIGINS=*
+APP_ENV=production
+STRIPE_SECRET_KEY=sk_test_...
+PAYPAL_CLIENT_ID=
+PAYPAL_SECRET=
+`;
+
+    // 2. Main Config
+    files['backend/config/config.php'] = `<?php
+declare(strict_types=1);
+
+// Load environment variables or define defaults
+define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1');
+define('DB_NAME', getenv('DB_NAME') ?: '${spec.packageName.replace(/[^a-zA-Z0-9]/g, '_')}_db');
+define('DB_USER', getenv('DB_USER') ?: 'root');
+define('DB_PASS', getenv('DB_PASS') ?: '');
+define('JWT_SECRET', getenv('JWT_SECRET') ?: '${Buffer.from(spec.packageName + '_' + Date.now()).toString('hex')}');
+define('CORS_ALLOWED_ORIGINS', getenv('CORS_ALLOWED_ORIGINS') ?: '*');
+`;
+
+    // 3. Database Config
     files['backend/config/database.php'] = `<?php
 declare(strict_types=1);
+require_once __DIR__ . '/config.php';
 
 class Database {
     private static ?PDO $pdo = null;
 
     public static function getConnection(): PDO {
         if (self::$pdo === null) {
-            $host = getenv('DB_HOST') ?: '127.0.0.1';
-            $dbname = getenv('DB_NAME') ?: '${spec.packageName.replace(/[^a-zA-Z0-9]/g, '_')}_db';
-            $user = getenv('DB_USER') ?: 'root';
-            $pass = getenv('DB_PASS') ?: '';
+            $host = DB_HOST;
+            $dbname = DB_NAME;
+            $user = DB_USER;
+            $pass = DB_PASS;
             $charset = 'utf8mb4';
 
             $dsn = "mysql:host={$host};dbname={$dbname};charset={$charset}";
@@ -54,12 +81,15 @@ class Database {
     }
 }`;
 
-    // 3. JWT Service
+    // 4. JWT Service
     files['backend/config/jwt.php'] = `<?php
 declare(strict_types=1);
+require_once __DIR__ . '/config.php';
 
 class JWT {
-    private static string $secret = 'APPFORGE_SECRET_KEY_${Buffer.from(spec.packageName).toString('hex').slice(0, 16)}';
+    private static function getSecret(): string {
+        return defined('JWT_SECRET') ? JWT_SECRET : (getenv('JWT_SECRET') ?: 'APPFORGE_DEFAULT_SECRET');
+    }
 
     public static function encode(array $payload, int $expirySeconds = 86400 * 30): string {
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
@@ -70,7 +100,7 @@ class JWT {
         $base64Header = self::base64UrlEncode($header);
         $base64Payload = self::base64UrlEncode($payloadJson);
 
-        $signature = hash_hmac('sha256', "{$base64Header}.{$base64Payload}", self::$secret, true);
+        $signature = hash_hmac('sha256', "{$base64Header}.{$base64Payload}", self::getSecret(), true);
         $base64Signature = self::base64UrlEncode($signature);
 
         return "{$base64Header}.{$base64Payload}.{$base64Signature}";
@@ -81,7 +111,7 @@ class JWT {
         if (count($parts) !== 3) return null;
 
         [$header, $payload, $signature] = $parts;
-        $expectedSig = self::base64UrlEncode(hash_hmac('sha256', "{$header}.{$payload}", self::$secret, true));
+        $expectedSig = self::base64UrlEncode(hash_hmac('sha256', "{$header}.{$payload}", self::getSecret(), true));
 
         if (!hash_equals($expectedSig, $signature)) return null;
 
@@ -100,11 +130,17 @@ class JWT {
     }
 }`;
 
-    // 4. CORS Handler
+    // 5. Configurable CORS Handler
     files['backend/config/cors.php'] = `<?php
 declare(strict_types=1);
+require_once __DIR__ . '/config.php';
 
-header('Access-Control-Allow-Origin: *');
+$allowedOrigins = defined('CORS_ALLOWED_ORIGINS') ? array_map('trim', explode(',', CORS_ALLOWED_ORIGINS)) : ['*'];
+$httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+
+if (in_array('*', $allowedOrigins, true) || in_array($httpOrigin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: {$httpOrigin}");
+}
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Content-Type: application/json; charset=UTF-8');

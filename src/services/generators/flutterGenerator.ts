@@ -73,7 +73,7 @@ flutter:
     </application>
 </manifest>`;
 
-    // 3. Android build.gradle
+    // 3. Android build.gradle (app-level)
     files['android/android/app/build.gradle'] = `plugins {
     id "com.android.application"
     id "kotlin-android"
@@ -139,13 +139,80 @@ flutter {
 }
 `;
 
-    // 4. App Config
+    // Root settings.gradle
+    files['android/android/settings.gradle'] = `pluginManagement {
+    def flutterSdkPath = {
+        def properties = new Properties()
+        def localPropertiesFile = file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.withInputStream { properties.load(it) }
+        }
+        return properties.getProperty("flutter.sdk") ?: System.getenv("FLUTTER_ROOT")
+    }()
+
+    if (flutterSdkPath != null) {
+        includeBuild("\$flutterSdkPath/packages/flutter_tools/gradle")
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+    id "com.android.application" version "8.2.1" apply false
+    id "org.jetbrains.kotlin.android" version "1.9.22" apply false
+}
+
+include ":app"
+`;
+
+    // Root build.gradle
+    files['android/android/build.gradle'] = `allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = "../build"
+subprojects {
+    project.buildDir = "\${rootProject.buildDir}/\${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
+`;
+
+    // MainActivity.kt
+    const pkgPath = pkg.replace(/\./g, '/');
+    files[`android/android/app/src/main/kotlin/${pkgPath}/MainActivity.kt`] = `package ${pkg}
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
+`;
+
+    // 4. App Config with Configurable API Base URL
     files['android/lib/core/config/app_config.dart'] = `class AppConfig {
   static const String appName = '${appName}';
   static const String appVersion = '${spec.version}';
-  static const String apiBaseUrl = 'https://api.${pkg.split('.')[1] || 'app'}.com/api';
+  // User-configurable API Base URL (default connects to local host or emulator)
+  static String apiBaseUrl = 'http://10.0.2.2/api';
   static const String currency = '${spec.payments.currency}';
-  static const int requestTimeoutSeconds = 15;
+  static const int requestTimeoutSeconds = 20;
+
+  static void setApiBaseUrl(String url) {
+    apiBaseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+  }
 }
 `;
 

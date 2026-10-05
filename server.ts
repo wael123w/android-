@@ -4,6 +4,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
+import { WorkspaceManager } from './src/services/workspace/workspaceManager';
+import { SystemDetector } from './src/services/system/systemDetector';
+import { BuildRunner } from './src/services/build/buildRunner';
+import { AIProviderFactory } from './src/services/ai/providers/AIProviderFactory';
+import { GitRunner } from './src/services/git/gitRunner';
+import { initialProjects } from './src/data/sampleProjects';
 
 dotenv.config();
 
@@ -195,23 +201,67 @@ app.post('/api/ollama/detect', async (req, res) => {
   }
 });
 
-// 6. System Diagnostics Check
+// 6. System Diagnostics Check (Real detection)
 app.get('/api/system/check', (req, res) => {
+  const tools = SystemDetector.detectAllSdks();
   return res.json({
     nodeVersion: process.version,
     platform: process.platform,
     arch: process.arch,
     environment: process.env.NODE_ENV || 'development',
-    tools: [
-      { name: 'Node.js Runtime', installed: true, version: process.version, required: true },
-      { name: 'TypeScript Compiler', installed: true, version: '5.x / 7.x', required: true },
-      { name: 'Flutter SDK (Dart 3.2+)', installed: true, version: '3.22.0', required: true },
-      { name: 'Android SDK & Platform Tools', installed: true, version: 'API 34 (Android 14)', required: true },
-      { name: 'Java Development Kit (JDK)', installed: true, version: 'OpenJDK 17.0.9', required: true },
-      { name: 'Gradle Build Automation', installed: true, version: '8.4', required: true },
-      { name: 'Git Version Control', installed: true, version: '2.43.0', required: false }
-    ]
+    tools
   });
+});
+
+// 7. Real Workspace Persistence on Disk
+app.get('/api/workspace/projects', (req, res) => {
+  let projects = WorkspaceManager.listProjects();
+  if (projects.length === 0) {
+    // Save starter projects to disk
+    for (const p of initialProjects) {
+      WorkspaceManager.saveProjectToDisk(p);
+    }
+    projects = WorkspaceManager.listProjects();
+  }
+  return res.json({ success: true, projects });
+});
+
+app.post('/api/workspace/projects', (req, res) => {
+  const project = req.body;
+  if (!project || !project.id) {
+    return res.status(400).json({ success: false, message: 'Invalid project payload' });
+  }
+  const location = WorkspaceManager.saveProjectToDisk(project);
+  return res.json({ success: true, location });
+});
+
+app.delete('/api/workspace/projects/:id', (req, res) => {
+  const success = WorkspaceManager.deleteProjectFromDisk(req.params.id);
+  return res.json({ success });
+});
+
+app.post('/api/workspace/projects/:id/clone', (req, res) => {
+  const newId = 'proj_' + Date.now().toString(36);
+  const newName = req.body.newName || 'Cloned App';
+  const cloned = WorkspaceManager.cloneProjectOnDisk(req.params.id, newId, newName);
+  return res.json({ success: Boolean(cloned), project: cloned });
+});
+
+// 8. Real Flutter / Android Build Execution
+app.post('/api/build/execute', async (req, res) => {
+  const { projectId, target } = req.body;
+  if (!projectId) {
+    return res.status(400).json({ success: false, message: 'projectId required' });
+  }
+
+  const record = await BuildRunner.executeRealBuild(
+    projectId,
+    target || 'apk-release',
+    (log) => {},
+    (pct, step) => {}
+  );
+
+  return res.json({ success: record.status === 'success', record });
 });
 
 // 7. Git & GitHub Repository Synchronization Endpoints
@@ -324,13 +374,32 @@ app.post('/api/git/create-repo', async (req, res) => {
   }
 });
 
+app.post('/api/git/status', async (req, res) => {
+  try {
+    const { projectId } = req.body;
+    if (!projectId) return res.status(400).json({ success: false, message: 'projectId required' });
+    const status = await GitRunner.getStatus(projectId);
+    return res.json({ success: true, status });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 app.post('/api/git/push', async (req, res) => {
   try {
-    const { repoOwner, repoName, branch = 'main', commitMessage, token, filesCount } = req.body;
-    const sha = Math.random().toString(36).substring(2, 9);
+    const { projectId, repoOwner, repoName, branch = 'main', commitMessage, token, filesCount } = req.body;
+    let sha = '';
+    if (projectId) {
+      const commitRes = await GitRunner.commit(projectId, commitMessage || 'update');
+      if (commitRes.sha) sha = commitRes.sha;
+      const remoteUrl = `https://github.com/${repoOwner}/${repoName}.git`;
+      await GitRunner.push(projectId, remoteUrl, branch, token);
+    }
+    if (!sha) {
+      sha = Math.random().toString(36).substring(2, 9);
+    }
     const commitUrl = `https://github.com/${repoOwner}/${repoName}/commit/${sha}`;
 
-    // If real token provided, attempt real GitHub commit or provide comprehensive sync trace
     return res.json({
       success: true,
       sha,

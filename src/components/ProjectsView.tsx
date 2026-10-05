@@ -10,7 +10,10 @@ import {
   Plus, 
   Smartphone, 
   Server, 
-  Database 
+  Database,
+  FolderGit2,
+  Lock,
+  Globe
 } from 'lucide-react';
 import { Project } from '../types';
 
@@ -100,15 +103,49 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     <span className="font-bold text-white text-xs">{p.spec.androidScreens.length}</span>
                   </div>
                 </div>
+
+                {/* Git Repository Synchronization Info */}
+                <div className="mt-3 p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <FolderGit2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <div className="truncate">
+                      <span className="font-mono text-[11px] text-slate-300 block truncate">
+                        {p.gitConfig?.repoOwner}/{p.gitConfig?.repoName}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        branch: {p.gitConfig?.branch || 'main'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 flex items-center gap-1 ${
+                    p.gitConfig?.isPrivate
+                      ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
+                      : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40'
+                  }`}>
+                    {p.gitConfig?.isPrivate ? <Lock className="w-2.5 h-2.5" /> : <Globe className="w-2.5 h-2.5" />}
+                    <span>{p.gitConfig?.isPrivate ? 'Private' : 'Public'}</span>
+                  </span>
+                </div>
               </div>
 
-              <div className="border-t border-slate-800 pt-4 flex items-center justify-between">
+              <div className="border-t border-slate-800 pt-4 flex items-center justify-between mt-4">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => onSelectProject(p.id)}
                     className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition"
                   >
                     Open Workspace
+                  </button>
+                  <button
+                    onClick={() => {
+                      onSelectProject(p.id);
+                      onNavigate('git_sync');
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-indigo-300 hover:text-white font-semibold text-xs transition"
+                    title="GitHub Repository Sync & Settings"
+                  >
+                    <FolderGit2 className="w-3.5 h-3.5" />
+                    <span>Git Sync</span>
                   </button>
                   <button
                     onClick={() => onExportZip(p)}
